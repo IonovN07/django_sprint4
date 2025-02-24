@@ -95,3 +95,22 @@ class Post(BasePublishedModel):
     
     # def get_absolute_url(self):
     #     return reverse('blog:post_detail', kwargs={'post_id': self.id})
+
+class Comment(models.Model):
+    text = models.TextField(max_length=256, verbose_name='Комментарий')
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='comments',
+        verbose_name='Автор публикации')
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='comments',
+        verbose_name='Комментарий поста')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('created_at',)

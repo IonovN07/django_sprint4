@@ -11,7 +11,10 @@ SECRET_KEY = 'django-insecure-&_ehfmogm=)%@o^=m^pdaa#oax@n%$)2kh+un@zl9z23ru!!@&
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    ]
 
 
 INSTALLED_APPS = [
@@ -23,8 +26,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'debug_toolbar',
     'django_bootstrap5',
+    'debug_toolbar',
 ]
 
 STATICFILES_DIRS = [
@@ -127,3 +130,7 @@ EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
 LOGIN_REDIRECT_URL = 'blog:index'
 
 LOGIN_URL = 'login'
+
+CSRF_FAILURE_VIEW = 'pages.views.csrf_failure'
+
+RESULTS_CACHE_SIZE = 1000
