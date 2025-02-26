@@ -1,8 +1,9 @@
 from django.contrib import admin
 
-from .models import Category, Location, Post
+from .models import Category, Location, Post, Comment
 
 
+@admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
     list_display = (
         'title',
@@ -29,6 +30,7 @@ class PostInline(admin.StackedInline):
     extra = 0
 
 
+@admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     inlines = (
         PostInline,
@@ -46,10 +48,9 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = ('title',)
 
 
+@admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    inlines = (
-        PostInline,
-    )
+    inlines = (PostInline,)
     list_display = (
         'name',
         'is_published'
@@ -60,7 +61,12 @@ class LocationAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 
-admin.site.register(Category, CategoryAdmin)
-admin.site.register(Location, LocationAdmin)
-admin.site.register(Post, PostAdmin)
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = (
+        'text', 
+        'author', 
+        'created_at')
+
+
 admin.site.empty_value_display = 'Не задано'

@@ -1,6 +1,6 @@
+from django.urls import include, path
 from django.urls import path
 from django.conf import settings
-from django.urls import include, path
 
 from . import views
 
@@ -26,10 +26,6 @@ urlpatterns = [
          views.CategoryPostsView.as_view(), name='category_posts'),
     path('profile/<str:username>/',
          views.UserDetailView.as_view(), name='profile'),
-    path('profile/<str:username>/edit/',
+    path('edit/profile/',
          views.EditProfileView.as_view(), name='edit_profile'),
 ]
-
-if settings.DEBUG:
-    import debug_toolbar
-    urlpatterns += (path('__debug__/', include(debug_toolbar.urls)),)

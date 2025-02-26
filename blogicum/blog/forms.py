@@ -10,11 +10,7 @@ class PostForm(forms.ModelForm):
         exclude = ('author',)
         widgets = {
             'pub_date': forms.DateInput(attrs={'type': 'date'}),
-            'text': forms.Textarea(attrs={'rows': 3})
         }
-
-    def clean(self):
-        super().clean()
 
 
 class CommentForm(forms.ModelForm):

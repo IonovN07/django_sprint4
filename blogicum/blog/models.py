@@ -47,7 +47,10 @@ class Location(BasePublishedModel):
         return self.name[:21]
 
 
+
 class Post(BasePublishedModel):
+    related_name = 'posts'
+
     title = models.CharField(max_length=256, verbose_name='Заголовок')
     text = models.TextField(verbose_name='Текст')
     pub_date = models.DateTimeField(
@@ -57,20 +60,20 @@ class Post(BasePublishedModel):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='posts',
+        related_name=related_name,
         verbose_name='Автор публикации')
     location = models.ForeignKey(
         Location,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='posts',
+        related_name=related_name,
         verbose_name='Местоположение')
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         null=True,
-        related_name='posts',
+        related_name=related_name,
         verbose_name='Категория')
     image = models.ImageField(
         upload_to='post_images',
@@ -94,13 +97,13 @@ class Post(BasePublishedModel):
 
 
 class Comment(models.Model):
-    text = models.TextField(max_length=256, verbose_name='Комментарий')
+    text = models.TextField(max_length=256, verbose_name='Текст')
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         null=True,
         related_name='comments',
-        verbose_name='Автор публикации')
+        verbose_name='Автор комментария')
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
@@ -110,4 +113,9 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = 'комментарий'
+        verbose_name_plural = 'Комментарии'
         ordering = ('created_at',)
+
+    def __str__(self):
+        return self.text[:21]
