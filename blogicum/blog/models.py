@@ -47,7 +47,6 @@ class Location(BasePublishedModel):
         return self.name[:21]
 
 
-
 class Post(BasePublishedModel):
     related_name = 'posts'
 

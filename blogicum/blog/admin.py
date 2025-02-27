@@ -64,8 +64,8 @@ class LocationAdmin(admin.ModelAdmin):
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     list_display = (
-        'text', 
-        'author', 
+        'text',
+        'author',
         'created_at')
 
 
