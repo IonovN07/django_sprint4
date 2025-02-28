@@ -19,28 +19,24 @@ from django.views.generic.edit import ModelFormMixin
 from blog.models import Category, Post, Comment
 from .forms import PostForm, CommentForm
 
+from django.http import Http404
+
 POSTS_PER_PAGE = 10
 
 
 def filter_published(
         posts=Post.objects.all(),
         filter_published=True,
-        select_related=None,
-        annotate=None):
-
-    if select_related is None:
-        select_related = ['category', 'location', 'author']
-
+        select_related=True,
+        annotate=True):
     if select_related:
-        posts = posts.select_related(*select_related)
-
-    if annotate is None:
+        posts = posts.select_related('category', 'location', 'author')
+    if annotate:
         posts = (
             posts
             .annotate(comment_count=Count('comments'))
             .order_by('-pub_date')
         )
-
     if filter_published:
         posts = posts.filter(
             is_published=True,
@@ -53,21 +49,12 @@ def filter_published(
 
 class AuthorPostMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        if not (self.object.author == request.user):
+        object = self.get_object()
+        if not (object.author == request.user):
             return redirect(
-                reverse('blog:post_detail', args=[self.object.id])
+                reverse('blog:post_detail', args=[object.id])
             )
         return super().dispatch(request, *args, **kwargs)
-
-
-class PostMixin:
-    model = Post
-    form_class = PostForm
-    template_name = 'blog/create.html'
-
-    def get_success_url(self):
-        return reverse('blog:profile', args=[self.object.author.username])
 
 
 class UserDetailView(ListView):
@@ -80,7 +67,7 @@ class UserDetailView(ListView):
             User,
             username=self.kwargs['username']
         )
-        return filter_published(author.posts, filter_published=None)
+        return filter_published(author.posts, filter_published=False)
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(
@@ -101,14 +88,10 @@ class EditProfileView(LoginRequiredMixin, UpdateView):
     template_name = 'blog/user.html'
 
     def get_object(self, queryset=None):
-        return get_object_or_404(User, username=self.request.user.username)
+        return self.request.user
 
     def get_success_url(self):
-        return (
-            reverse(
-                'blog:profile',
-                kwargs={'username': self.object.username})
-        )
+        return reverse('blog:profile', args=[self.request.user])
 
 
 class PostListView(ListView):
@@ -118,9 +101,11 @@ class PostListView(ListView):
     queryset = filter_published()
 
 
+
 class PostDetailView(LoginRequiredMixin, DetailView):
     model = Post
     template_name = 'blog/detail.html'
+
 
     def get_object(self, queryset=None):
         post = get_object_or_404(
@@ -129,18 +114,27 @@ class PostDetailView(LoginRequiredMixin, DetailView):
         )
         if post.author == self.request.user:
             return post
-        else:
-            return get_object_or_404(
-                filter_published(),
-                id=self.kwargs['post_id']
-            )
+        if post.is_published and post.pub_date < timezone.now():
+            return post
+        raise Http404("Post not found or you don't have permission to view this post")    
+        
+        # return filter_published(annotate=False, select_related=False)
+            
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(
-            **kwargs,
-            form=CommentForm(),
-            comments=self.object.comments.select_related('author')
-        )
+        context = super().get_context_data(**kwargs)
+        context['form'] = CommentForm()
+        
+        context['comments'] = self.get_object().comments.select_related('author')
+        return context
+
+    # def get_context_data(self, **kwargs):
+    #     return super().get_context_data(
+    #         **kwargs,
+    #         form=CommentForm(),
+    #         if self.object:
+    #         comments=self.object.comments.select_related('author')
+    #     )
 
 
 class PostCreateView(LoginRequiredMixin, CreateView):
@@ -158,16 +152,22 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         )
 
 
-class PostUpdateView(AuthorPostMixin, PostMixin, UpdateView):
+class PostMixin:
+    model = Post
+    form_class = PostForm
+    template_name = 'blog/create.html'
+    pk_url_kwarg = 'post_id'
 
-    def get_object(self, queryset=None):
-        return get_object_or_404(filter_published(), id=self.kwargs['post_id'])
+    def get_success_url(self):
+        return reverse('blog:profile', args=[self.object.author.username])
+
+
+class PostUpdateView(AuthorPostMixin, PostMixin, UpdateView):
+    pass
 
 
 class PostDeleteView(AuthorPostMixin, PostMixin, ModelFormMixin, DeleteView):
-
-    def get_object(self, queryset=None):
-        return get_object_or_404(filter_published(), id=self.kwargs['post_id'])
+    pass
 
 
 class CategoryPostsView(ListView):
@@ -176,18 +176,14 @@ class CategoryPostsView(ListView):
     paginate_by = POSTS_PER_PAGE
 
     def get_category(self):
-        category = get_object_or_404(
+        return get_object_or_404(
             Category,
             slug=self.kwargs['category_slug'],
             is_published=True
         )
-        return category
 
     def get_queryset(self):
-        category = self.get_category()
-        return (
-            filter_published(category.posts)
-        )
+        return filter_published(self.get_category().posts)
 
     def get_context_data(self, object_list=None, **kwargs):
         return super().get_context_data(**kwargs, category=self.get_category())
@@ -201,7 +197,7 @@ class CommentMixin(LoginRequiredMixin):
 
     def get_context_data(self, **kwargs):
         return (
-            super().get_context_data(**kwargs, post_id=self.kwargs['post_id'])
+            super().get_context_data(**kwargs, post=self.get_object())
         )
 
     def dispatch(self, request, *args, **kwargs):

@@ -3,6 +3,8 @@ from django.db import models
 
 User = get_user_model()
 
+RELATED_NAME_POSTS = 'posts'
+RELATED_NAME_COMMENTS = 'comments'
 
 class BasePublishedModel(models.Model):
     is_published = models.BooleanField(
@@ -48,7 +50,6 @@ class Location(BasePublishedModel):
 
 
 class Post(BasePublishedModel):
-    related_name = 'posts'
 
     title = models.CharField(max_length=256, verbose_name='Заголовок')
     text = models.TextField(verbose_name='Текст')
@@ -59,20 +60,20 @@ class Post(BasePublishedModel):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name=related_name,
+        related_name=RELATED_NAME_POSTS,
         verbose_name='Автор публикации')
     location = models.ForeignKey(
         Location,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name=related_name,
+        related_name=RELATED_NAME_POSTS,
         verbose_name='Местоположение')
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         null=True,
-        related_name=related_name,
+        related_name=RELATED_NAME_POSTS,
         verbose_name='Категория')
     image = models.ImageField(
         upload_to='post_images',
@@ -101,14 +102,14 @@ class Comment(models.Model):
         User,
         on_delete=models.CASCADE,
         null=True,
-        related_name='comments',
-        verbose_name='Автор комментария')
+        related_name=RELATED_NAME_COMMENTS,
+        verbose_name='Автор')
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
         null=True,
-        related_name='comments',
-        verbose_name='Комментарий поста')
+        related_name=RELATED_NAME_COMMENTS,
+        verbose_name='Пост')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
