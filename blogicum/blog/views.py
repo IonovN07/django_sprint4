@@ -1,13 +1,9 @@
-from django import forms
-from django.http import Http404
-from django.utils import timezone
-
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
-from django.core.exceptions import PermissionDenied
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -17,15 +13,14 @@ from django.views.generic import (
 )
 from django.views.generic.edit import ModelFormMixin
 
-
 from blog.models import Category, Post, Comment
-from .forms import PostForm, CommentForm
+from .forms import PostForm, CommentForm, EditProfileForm
 
 
 POSTS_PER_PAGE = 10
 
 
-def filter_published(
+def published(
         posts=Post.objects.all(),
         filter_published=True,
         select_related=True,
@@ -51,7 +46,7 @@ def filter_published(
 class AuthorPostMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         object = self.get_object()
-        if not (object.author == request.user):
+        if object.author != request.user:
             return redirect(
                 reverse('blog:post_detail', args=[object.id])
             )
@@ -72,53 +67,47 @@ class UserDetailView(ListView):
 
     def get_queryset(self):
         author = self.get_object()
-        if self.request.user == author:
-            return author.posts.all()
-        return filter_published(author.posts)
+        return (
+            published(author.posts, filter_published=False)
+            if self.request.user == author
+            else published(author.posts)
+        )
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(**kwargs, profile=self.get_object())
 
 
 class EditProfileView(LoginRequiredMixin, UpdateView):
-
-    class EditProfileForm(forms.ModelForm):
-        class Meta:
-            model = User
-            fields = ['username', 'email', 'first_name', 'last_name']
-
-    form_class = EditProfileForm
     model = User
+    form_class = EditProfileForm
     template_name = 'blog/user.html'
 
     def get_object(self, queryset=None):
         return self.request.user
 
     def get_success_url(self):
-        return reverse('blog:profile', args=[self.request.user])
+        return reverse('blog:profile', args=[self.request.user.username])
 
 
 class PostListView(ListView):
     model = Post
     template_name = 'blog/index.html'
     paginate_by = POSTS_PER_PAGE
-    queryset = filter_published()
+    queryset = published()
 
 
 class PostDetailView(LoginRequiredMixin, DetailView):
     model = Post
     template_name = 'blog/detail.html'
+    pk_url_kwarg = 'post_id'
 
     def get_object(self, queryset=None):
-        post = get_object_or_404(
-            super().get_queryset(),
-            id=self.kwargs['post_id']
+        post = super().get_object(queryset)
+        return (
+            post
+            if post.author == self.request.user
+            else super().get_object(published(self.get_queryset()))
         )
-        if post.author == self.request.user:
-            return post
-        if post.is_published and post.pub_date < timezone.now():
-            return post
-        raise Http404('Запрашиваемая вами страница не найдена')
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(
@@ -174,7 +163,7 @@ class CategoryPostsView(ListView):
         )
 
     def get_queryset(self):
-        return filter_published(self.get_category().posts)
+        return published(self.get_category().posts)
 
     def get_context_data(self, object_list=None, **kwargs):
         return super().get_context_data(**kwargs, category=self.get_category())
@@ -192,9 +181,7 @@ class CommentMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         comment = self.get_object()
         if comment.author != request.user:
-            raise PermissionDenied(
-                reverse('blog:post_detail', args=[self.kwargs['post_id']])
-            )
+            return redirect('blog:post_detail', self.kwargs['post_id'])
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):

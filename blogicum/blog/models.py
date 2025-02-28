@@ -3,9 +3,6 @@ from django.db import models
 
 User = get_user_model()
 
-RELATED_NAME_POSTS = 'posts'
-RELATED_NAME_COMMENTS = 'comments'
-
 
 class BasePublishedModel(models.Model):
     is_published = models.BooleanField(
@@ -61,20 +58,20 @@ class Post(BasePublishedModel):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name=RELATED_NAME_POSTS,
+        related_name='%(class)ss',
         verbose_name='Автор публикации')
     location = models.ForeignKey(
         Location,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name=RELATED_NAME_POSTS,
+        related_name='%(class)ss',
         verbose_name='Местоположение')
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         null=True,
-        related_name=RELATED_NAME_POSTS,
+        related_name='%(class)ss',
         verbose_name='Категория')
     image = models.ImageField(
         upload_to='post_images',
@@ -103,13 +100,13 @@ class Comment(models.Model):
         User,
         on_delete=models.CASCADE,
         null=True,
-        related_name=RELATED_NAME_COMMENTS,
+        related_name='comments',
         verbose_name='Автор')
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
         null=True,
-        related_name=RELATED_NAME_COMMENTS,
+        related_name='comments',
         verbose_name='Пост')
     created_at = models.DateTimeField(auto_now_add=True)
 
