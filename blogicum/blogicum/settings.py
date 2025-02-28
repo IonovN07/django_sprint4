@@ -9,7 +9,7 @@ INTERNAL_IPS = [
 
 SECRET_KEY = 'django-insecure-&_ehfmogm=)%@o^=m^pdaa#oax@n%$)2kh+un@zl9z23ru!!@&'
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     'localhost',

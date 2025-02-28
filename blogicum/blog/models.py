@@ -6,6 +6,7 @@ User = get_user_model()
 RELATED_NAME_POSTS = 'posts'
 RELATED_NAME_COMMENTS = 'comments'
 
+
 class BasePublishedModel(models.Model):
     is_published = models.BooleanField(
         default=True,

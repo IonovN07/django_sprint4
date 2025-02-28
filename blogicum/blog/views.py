@@ -1,9 +1,10 @@
 from django import forms
-from django.core.exceptions import PermissionDenied
+from django.http import Http404
 from django.utils import timezone
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -16,10 +17,10 @@ from django.views.generic import (
 )
 from django.views.generic.edit import ModelFormMixin
 
+
 from blog.models import Category, Post, Comment
 from .forms import PostForm, CommentForm
 
-from django.http import Http404
 
 POSTS_PER_PAGE = 10
 
@@ -35,7 +36,7 @@ def filter_published(
         posts = (
             posts
             .annotate(comment_count=Count('comments'))
-            .order_by('-pub_date')
+            .order_by(*posts.model._meta.ordering)
         )
     if filter_published:
         posts = posts.filter(
@@ -58,22 +59,25 @@ class AuthorPostMixin(LoginRequiredMixin):
 
 
 class UserDetailView(ListView):
-    model = Post
+    model = User
     template_name = 'blog/profile.html'
     paginate_by = POSTS_PER_PAGE
+    slug_url_kwarg = 'username'
+
+    def get_object(self):
+        return get_object_or_404(
+            User,
+            username=self.kwargs[self.slug_url_kwarg]
+        )
 
     def get_queryset(self):
-        author = get_object_or_404(
-            User,
-            username=self.kwargs['username']
-        )
-        return filter_published(author.posts, filter_published=False)
+        author = self.get_object()
+        if self.request.user == author:
+            return author.posts.all()
+        return filter_published(author.posts)
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(
-            **kwargs,
-            profile=get_object_or_404(User, username=self.kwargs['username'])
-        )
+        return super().get_context_data(**kwargs, profile=self.get_object())
 
 
 class EditProfileView(LoginRequiredMixin, UpdateView):
@@ -101,11 +105,9 @@ class PostListView(ListView):
     queryset = filter_published()
 
 
-
 class PostDetailView(LoginRequiredMixin, DetailView):
     model = Post
     template_name = 'blog/detail.html'
-
 
     def get_object(self, queryset=None):
         post = get_object_or_404(
@@ -116,25 +118,14 @@ class PostDetailView(LoginRequiredMixin, DetailView):
             return post
         if post.is_published and post.pub_date < timezone.now():
             return post
-        raise Http404("Post not found or you don't have permission to view this post")    
-        
-        # return filter_published(annotate=False, select_related=False)
-            
+        raise Http404('Запрашиваемая вами страница не найдена')
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['form'] = CommentForm()
-        
-        context['comments'] = self.get_object().comments.select_related('author')
-        return context
-
-    # def get_context_data(self, **kwargs):
-    #     return super().get_context_data(
-    #         **kwargs,
-    #         form=CommentForm(),
-    #         if self.object:
-    #         comments=self.object.comments.select_related('author')
-    #     )
+        return super().get_context_data(
+            **kwargs,
+            form=CommentForm(),
+            comments=self.object.comments.select_related('author')
+        )
 
 
 class PostCreateView(LoginRequiredMixin, CreateView):
@@ -196,9 +187,7 @@ class CommentMixin(LoginRequiredMixin):
     pk_url_kwarg = 'comment_id'
 
     def get_context_data(self, **kwargs):
-        return (
-            super().get_context_data(**kwargs, post=self.get_object())
-        )
+        return super().get_context_data(**kwargs, post=self.get_object())
 
     def dispatch(self, request, *args, **kwargs):
         comment = self.get_object()
