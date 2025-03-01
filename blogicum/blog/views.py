@@ -20,7 +20,7 @@ from .forms import PostForm, CommentForm, EditProfileForm
 POSTS_PER_PAGE = 10
 
 
-def get_posts_with_annotations(
+def get_posts(
         posts=Post.objects.all(),
         filter_published=True,
         select_related=True,
@@ -28,11 +28,12 @@ def get_posts_with_annotations(
     if select_related:
         posts = posts.select_related('category', 'location', 'author')
     if annotate:
-        posts = (
-            posts
-            .annotate(comment_count=Count('comments'))
-            .order_by(*posts.model._meta.ordering)
+        posts = posts.annotate(
+            comment_count=Count('comments')
+        ).order_by(
+            *posts.model._meta.ordering
         )
+        
     if filter_published:
         posts = posts.filter(
             is_published=True,
