@@ -20,7 +20,7 @@ from .forms import PostForm, CommentForm, EditProfileForm
 POSTS_PER_PAGE = 10
 
 
-def published(
+def get_posts_with_annotations(
         posts=Post.objects.all(),
         filter_published=True,
         select_related=True,
@@ -67,10 +67,9 @@ class UserDetailView(ListView):
 
     def get_queryset(self):
         author = self.get_object()
-        return (
-            published(author.posts, filter_published=False)
-            if self.request.user == author
-            else published(author.posts)
+        return get_posts_with_annotations(
+            author.posts,
+            filter_published=(self.request.user != author)
         )
 
     def get_context_data(self, **kwargs):
@@ -93,7 +92,7 @@ class PostListView(ListView):
     model = Post
     template_name = 'blog/index.html'
     paginate_by = POSTS_PER_PAGE
-    queryset = published()
+    queryset = get_posts_with_annotations()
 
 
 class PostDetailView(LoginRequiredMixin, DetailView):
@@ -106,7 +105,7 @@ class PostDetailView(LoginRequiredMixin, DetailView):
         return (
             post
             if post.author == self.request.user
-            else super().get_object(published(self.get_queryset()))
+            else super().get_object(get_posts_with_annotations())
         )
 
     def get_context_data(self, **kwargs):
@@ -163,7 +162,7 @@ class CategoryPostsView(ListView):
         )
 
     def get_queryset(self):
-        return published(self.get_category().posts)
+        return get_posts_with_annotations(self.get_category().posts)
 
     def get_context_data(self, object_list=None, **kwargs):
         return super().get_context_data(**kwargs, category=self.get_category())
